@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lucky Draw 1–100</title>
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#17202a}
+header{background:#111827;color:white;padding:22px 16px;text-align:center}
+h1{margin:0 0 6px;font-size:28px}.sub{opacity:.8}
+.container{max-width:900px;margin:20px auto;padding:0 14px}
+.card{background:white;border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 4px 18px #00000012}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+button{border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer}
+.primary{background:#2563eb;color:white}.danger{background:#dc2626;color:white}.secondary{background:#e5e7eb}
+.stats{display:flex;gap:12px;flex-wrap:wrap}.stat{flex:1;min-width:130px;background:#f8fafc;padding:12px;border-radius:10px}
+.stat b{display:block;font-size:22px;margin-top:4px}
+.grid{display:grid;grid-template-columns:repeat(10,1fr);gap:7px}
+.ticket{padding:11px 4px;border-radius:9px;border:1px solid #d1d5db;background:white;font-weight:700;cursor:pointer}
+.ticket.sold{background:#111827;color:white;border-color:#111827}.ticket.selected{outline:3px solid #2563eb}
+.results{display:flex;gap:12px;flex-wrap:wrap}.winner{flex:1;min-width:130px;text-align:center;background:#fef3c7;border-radius:14px;padding:18px}
+.winner strong{display:block;font-size:38px;margin-top:5px}
+.notice{font-size:13px;color:#6b7280;line-height:1.5}
+#drawStatus{margin-top:12px;font-weight:700}
+@media(max-width:600px){.grid{grid-template-columns:repeat(5,1fr)}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<header><h1>🎟️ Lucky Draw</h1><div class="sub">Tickets 1–100 • 3 unique winners</div></header>
+<div class="container">
+<section class="card">
+<h2>Ticket Management</h2>
+<p class="notice">Click ticket numbers to mark them as sold/eligible. This demo stores data only in this browser.</p>
+<div class="stats">
+<div class="stat">Total tickets<b>100</b></div>
+<div class="stat">Eligible<b id="soldCount">0</b></div>
+<div class="stat">Remaining<b id="availableCount">100</b></div>
+</div>
+<br>
+<div class="controls">
+<button class="primary" onclick="selectAll()">Mark All Sold</button>
+<button class="secondary" onclick="clearAll()">Clear All</button>
+</div>
+<div id="grid" class="grid"></div>
+</section>
+
+<section class="card">
+<h2>🎲 Draw</h2>
+<p class="notice">The draw selects 3 different numbers from the currently eligible tickets using the browser's cryptographically secure random generator.</p>
+<button class="primary" onclick="drawWinners()">Generate 3 Winners</button>
+<div id="drawStatus"></div>
+<div id="results" class="results" style="margin-top:15px"></div>
+</section>
+
+<section class="card">
+<h2>Draw Record</h2>
+<div id="record" class="notice">No draw has been performed yet.</div>
+</section>
+</div>
+<script>
+const grid=document.getElementById('grid');
+const soldCount=document.getElementById('soldCount');
+const availableCount=document.getElementById('availableCount');
+const results=document.getElementById('results');
+const record=document.getElementById('record');
+let sold=new Set(JSON.parse(localStorage.getItem('luckyDrawSold')||'[]'));
+
+function save(){localStorage.setItem('luckyDrawSold',JSON.stringify([...sold]));update()}
+function update(){
+  soldCount.textContent=sold.size;
+  availableCount.textContent=100-sold.size;
+  document.querySelectorAll('.ticket').forEach(b=>{
+    const n=Number(b.dataset.n); b.classList.toggle('sold',sold.has(n));
+  });
+}
+for(let n=1;n<=100;n++){
+  const b=document.createElement('button'); b.className='ticket'; b.dataset.n=n; b.textContent=n;
+  b.onclick=()=>{sold.has(n)?sold.delete(n):sold.add(n);save()};
+  grid.appendChild(b);
+}
+function selectAll(){sold=new Set(Array.from({length:100},(_,i)=>i+1));save()}
+function clearAll(){sold.clear();save()}
+function secureRandomInt(max){
+  const a=new Uint32Array(1); crypto.getRandomValues(a);
+  return Math.floor((a[0]/4294967296)*max);
+}
+function drawWinners(){
+  if(sold.size<3){alert('At least 3 eligible/sold tickets are required.');return}
+  const pool=[...sold], winners=[];
+  while(winners.length<3){
+    const n=pool.splice(secureRandomInt(pool.length),1)[0]; winners.push(n);
+  }
+  results.innerHTML=winners.map((n,i)=>`<div class="winner">Winner ${i+1}<strong>${n}</strong></div>`).join('');
+  const now=new Date();
+  const stamp=now.toLocaleString();
+  record.innerHTML=`Draw completed: <b>${stamp}</b><br>Eligible tickets at draw: <b>${[...sold].sort((a,b)=>a-b).join(', ')}</b><br>Winning numbers: <b>${winners.join(', ')}</b>`;
+  document.getElementById('drawStatus').textContent='Draw completed successfully.';
+}
+update();
+</script>
+</body>
+</html>
